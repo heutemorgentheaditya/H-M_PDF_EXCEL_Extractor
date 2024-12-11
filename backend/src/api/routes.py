@@ -5,6 +5,10 @@ from tempfile import NamedTemporaryFile
 
 router = APIRouter()
 
+@router.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "API is running"}
+
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     if not file.filename.endswith('.pdf'):
