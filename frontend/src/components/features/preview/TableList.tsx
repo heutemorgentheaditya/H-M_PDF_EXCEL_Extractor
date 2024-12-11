@@ -1,6 +1,8 @@
 'use client';
+
 import React, { useState } from 'react';
 import { TableData, ColumnMapping } from '@/types/pdf';
+import { exportToExcel } from '@/services/api';
 
 interface TableListProps {
   tables: TableData[];
@@ -9,6 +11,7 @@ interface TableListProps {
 
 export default function TableList({ tables, onColumnMap }: TableListProps) {
   const [mappings, setMappings] = useState<Record<string, ColumnMapping>>({});
+  const [isExporting, setIsExporting] = useState(false);
 
   const columnOptions = [
     { value: '', label: 'Select mapping...' },
@@ -33,10 +36,42 @@ export default function TableList({ tables, onColumnMap }: TableListProps) {
     onColumnMap?.(tableId, newMapping);
   };
 
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      
+      // Filter out empty mappings
+      const validMappings = Object.fromEntries(
+        Object.entries(mappings).filter(([_, value]) => 
+          Object.keys(value).length > 0
+        )
+      );
+      
+      // Prepare tables with table_id
+      const tablesWithIds = tables.map((table, index) => ({
+        ...table,
+        table_id: `table_${index}`
+      }));
+      
+      console.log('Exporting with data:', { 
+        tables: tablesWithIds, 
+        mappings: validMappings 
+      });
+      
+      await exportToExcel(tablesWithIds, validMappings);
+      alert('Export successful!');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
-      {tables.map((table) => (
-        <div key={table.table_id} className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+      {tables.map((table, tableIndex) => (
+        <div key={tableIndex} className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
               Table from page {table.page}
@@ -56,8 +91,8 @@ export default function TableList({ tables, onColumnMap }: TableListProps) {
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md 
                                    shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                                    bg-white"
-                          value={mappings[table.table_id]?.[column] || ''}
-                          onChange={(e) => handleColumnMap(table.table_id, column, e.target.value)}
+                          value={mappings[`table_${tableIndex}`]?.[column] || ''}
+                          onChange={(e) => handleColumnMap(`table_${tableIndex}`, column, e.target.value)}
                         >
                           {columnOptions.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -86,22 +121,27 @@ export default function TableList({ tables, onColumnMap }: TableListProps) {
               </tbody>
             </table>
           </div>
+          {table.data.length > 5 && (
+            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+              <p className="text-sm text-gray-500">
+                Showing {Math.min(5, table.data.length)} of {table.data.length} rows
+              </p>
+            </div>
+          )}
         </div>
       ))}
-      
-      {tables.length > 0 && (
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={() => console.log('Current mappings:', mappings)}
-            className="inline-flex items-center px-4 py-2 border border-transparent 
-                     text-sm font-medium rounded-md shadow-sm text-white 
-                     bg-blue-600 hover:bg-blue-700 focus:outline-none 
-                     focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Export to Excel
-          </button>
-        </div>
-      )}
+
+      <div className="flex justify-end space-x-4">
+        <button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="px-6 py-2 bg-blue-500 text-white text-sm font-medium rounded-md 
+                   hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 
+                   focus:ring-offset-2 disabled:opacity-50"
+        >
+          {isExporting ? 'Exporting...' : 'Export to Excel'}
+        </button>
+      </div>
     </div>
   );
 }
