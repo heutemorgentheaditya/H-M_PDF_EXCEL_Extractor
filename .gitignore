@@ -1,6 +1,5 @@
-echo "# Dependencies
-node_modules/
-venv/
+echo "
+# Python
 __pycache__/
 
 # Environment files
