@@ -1,6 +1,12 @@
+import { TableData, MappingData } from '@/types/pdf';
+
 const API_BASE_URL = 'http://localhost:8000/api';
 
-export const uploadPDF = async (file: File) => {
+interface UploadResponse {
+  tables: TableData[];
+}
+
+export const uploadPDF = async (file: File): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', file);
 
@@ -22,12 +28,35 @@ export const uploadPDF = async (file: File) => {
   }
 };
 
-export const checkHealth = async () => {
+
+export const exportToExcel = async (tables: TableData[], mappings: MappingData): Promise<void> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/health`);
-    return await response.json();
+    const response = await fetch(`${API_BASE_URL}/export-excel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      body: JSON.stringify({ tables, mappings }),
+
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.detail || 'Failed to export Excel');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'extracted_data.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   } catch (error) {
-    console.error('API health check failed:', error);
+    console.error('Error exporting Excel:', error);
     throw error;
   }
 };
