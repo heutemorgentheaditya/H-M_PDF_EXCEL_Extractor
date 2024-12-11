@@ -1,0 +1,21 @@
+echo "# Dependencies
+node_modules/
+venv/
+__pycache__/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build files
+dist/
+build/
+.next/
+
+# IDE files
+.vscode/
+.idea/
+
+# System files
+.DS_Store" > .gitignore
